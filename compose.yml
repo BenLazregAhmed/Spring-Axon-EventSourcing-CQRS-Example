@@ -1,0 +1,218 @@
+services:
+  axon-server:
+    image: axoniq/axonserver
+    container_name: axon-server
+    healthcheck:
+      test: [ "CMD","curl","-f" , "http://localhost:8024/actuator/health"]
+    ports:
+      - 8024:8024
+      - 8124:8124
+    expose:
+      - 8124
+  mysql-product-command-db:
+    image: mysql
+    container_name: mysql-product-command-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: ecom-product-command-db
+      MYSQL_USER: ahmed2
+      MYSQL_PASSWORD: 12345
+      MYSQL_ROOT_PASSWORD: admin
+    ports:
+      - "3308:3306"
+    expose:
+      - 3308
+    healthcheck:
+      test: [ "CMD", 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-padmin' ]
+      timeout: 5s
+      retries: 10
+  mysql-product-query-db:
+    image: mysql
+    container_name: mysql-product-query-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: ecom-product-db
+      MYSQL_USER: ahmed2
+      MYSQL_PASSWORD: 12345
+      MYSQL_ROOT_PASSWORD: admin
+    ports:
+      - "3309:3306"
+    expose:
+      - 3309
+    healthcheck:
+      test: [ "CMD", 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-padmin' ]
+      timeout: 5s
+      retries: 10
+  mysql-order-command-db:
+    image: mysql
+    container_name: mysql-order-command-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: ecom-order-command-db
+      MYSQL_USER: ahmed2
+      MYSQL_PASSWORD: 12345
+      MYSQL_ROOT_PASSWORD: admin
+    ports:
+      - "3305:3306"
+    expose:
+      - 3305
+    healthcheck:
+      test: [ "CMD", 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-padmin' ]
+      timeout: 5s
+      retries: 10
+  mysql-order-query-db:
+    image: mysql
+    container_name: mysql-order-query-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: ecom-order-db
+      MYSQL_USER: ahmed2
+      MYSQL_PASSWORD: 12345
+      MYSQL_ROOT_PASSWORD: admin
+    ports:
+      - "3311:3306"
+    expose:
+      - 3311
+    healthcheck:
+      test: [ "CMD", 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-padmin' ]
+      timeout: 5s
+      retries: 10
+  mysql-inventory-query-db:
+    image: mysql
+    container_name: mysql-inventory-query-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: ecom-inventory-db
+      MYSQL_USER: ahmed2
+      MYSQL_PASSWORD: 12345
+      MYSQL_ROOT_PASSWORD: admin
+    ports:
+      - "3310:3306"
+    expose:
+      - 3310
+    healthcheck:
+      test: [ "CMD", 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-padmin' ]
+      timeout: 5s
+      retries: 10
+  product-service-command-side:
+    container_name: product-service-command-side
+    build: ./product-service-command-side
+    ports:
+      - '8090:8090'
+    expose:
+      - '8090'
+    depends_on:
+      mysql-product-command-db:
+        condition: service_started
+      axon-server:
+        condition: service_healthy
+    environment:
+      MY_SQL_HOST: mysql-product-command-db
+      MY_SQL_PORT: 3306
+      MY_SQL_USERNAME: ahmed2
+      MY_SQL_PASSWORD: 12345
+    healthcheck:
+      test: [ "CMD","curl","-f","http://192.168.134.3:8095/actuator/health" ]
+      interval: 10s
+      retries: 3
+  product-service-query-side:
+    container_name: product-service-query-side
+    build: ./product-service-query-side
+    ports:
+      - '8095:8095'
+    expose:
+      - '8095'
+    depends_on:
+      mysql-product-query-db:
+        condition: service_started
+      axon-server:
+        condition: service_healthy
+    environment:
+      MY_SQL_HOST: mysql-product-query-db
+      MY_SQL_PORT: 3306
+      MY_SQL_USERNAME: ahmed2
+      MY_SQL_PASSWORD: 12345
+      AXON_PROJECT: axon-server
+    healthcheck:
+      test: [ "CMD","curl","-f","http://192.168.134.3:8090/actuator/health" ]
+      interval: 10s
+      retries: 3
+  order-service-command-side:
+    container_name: order-service-command-side
+    build: ./order-service-command-side
+    ports:
+      - '8075:8075'
+    expose:
+      - '8075'
+    environment:
+      MY_SQL_HOST: mysql-order-command-db
+      MY_SQL_PORT: 3306
+      MY_SQL_USERNAME: ahmed2
+      MY_SQL_PASSWORD: 12345
+    depends_on:
+      mysql-order-command-db:
+        condition: service_started
+      axon-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD","curl","-f","http://192.168.134.3:8075/actuator/health" ]
+      interval: 10s
+      retries: 3
+  order-service-query-side:
+    container_name: order-service-query-side
+    build: ./order-service-query-side
+    ports:
+      - '8070:8070'
+    expose:
+      - '8070'
+    environment:
+      MY_SQL_HOST: mysql-order-query-db
+      MY_SQL_PORT: 3306
+      MY_SQL_USERNAME: ahmed2
+      MY_SQL_PASSWORD: 12345
+      AXON_PROJECT: axon-server
+    depends_on:
+      mysql-order-query-db:
+        condition: service_started
+      axon-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD","curl","-f","http://192.168.134.3:8070/actuator/health" ]
+      interval: 10s
+      retries: 3
+  inventory-service-command-side:
+    container_name: inventory-service-command-side
+    build: ./inventory-service-command-side
+    ports:
+      - '8080:8080'
+    expose:
+      - '8080'
+    depends_on:
+      axon-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD","curl","-f","http://192.168.134.3:8085/actuator/health" ]
+      interval: 10s
+      retries: 3
+  inventory-service-query-side:
+    container_name: inventory-service-query-side
+    build: ./inventory-service-query-side
+    ports:
+      - '8085:8085'
+    expose:
+      - '8085'
+    depends_on:
+      mysql-inventory-query-db:
+        condition: service_started
+      axon-server:
+        condition: service_healthy
+    environment:
+      MY_SQL_HOST: mysql-inventory-query-db
+      MY_SQL_PORT: 3306
+      MY_SQL_USERNAME: ahmed2
+      MY_SQL_PASSWORD: 12345
+      AXON_PROJECT: axon-server
+    healthcheck:
+      test: [ "CMD","curl","-f","http://192.168.134.3:8080/actuator/health" ]
+      interval: 10s
+      retries: 3
